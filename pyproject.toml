@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dify-dsl"
+version = "3.0.0"
+description = "Typed parser & generator for Dify workflow DSL files"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.0",
+    "ruamel.yaml>=0.18",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+]
+
+[project.scripts]
+dify-dsl = "dify_dsl.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
