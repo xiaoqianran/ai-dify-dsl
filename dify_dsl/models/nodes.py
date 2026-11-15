@@ -140,6 +140,12 @@ class LoopNodeData(NodeData):
     type: str = "loop"
 
 
+class LoopStartNodeData(NodeData):
+    """Loop body entry marker. The enclosing loop is linked by Node.parentId."""
+    type: str = "loop-start"
+    isInLoop: bool = True
+
+
 # ---------------------------------------------------------------------------
 # External integration nodes
 # ---------------------------------------------------------------------------
@@ -270,10 +276,12 @@ _NODE_DATA_REGISTRY: Dict[str, type] = {
     "llm": LLMNodeData,
     "code": CodeNodeData,
     "template_transform": TemplateTransformNodeData,
+    "template-transform": TemplateTransformNodeData,
     "variable_aggregator": VariableAggregatorNodeData,
     "variable-aggregator": VariableAggregatorNodeData,
     "variable_assigner": VariableAssignerNodeData,
     "variable-assigner": VariableAssignerNodeData,
+    "assigner": VariableAssignerNodeData,
     "knowledge_retrieval": KnowledgeRetrievalNodeData,
     "knowledge-retrieval": KnowledgeRetrievalNodeData,
     "if_else": IfElseNodeData,
@@ -282,6 +290,7 @@ _NODE_DATA_REGISTRY: Dict[str, type] = {
     "iteration_start": IterationStartNodeData,
     "iteration-start": IterationStartNodeData,
     "loop": LoopNodeData,
+    "loop-start": LoopStartNodeData,
     "http_request": HttpRequestNodeData,
     "http-request": HttpRequestNodeData,
     "tool": ToolNodeData,

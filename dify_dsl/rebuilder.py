@@ -139,7 +139,7 @@ def _rebuild_node(node_id: str, node_type: str, node_dir: Path) -> Optional[Node
         config = _rebuild_http(config, node_dir)
     elif node_type in ("if_else", "if-else"):
         config = _rebuild_if_else(config, node_dir)
-    elif node_type == "template_transform":
+    elif node_type in ("template_transform", "template-transform"):
         config = _rebuild_template(config, node_dir)
 
     # 只保留原本显式设置的字段，避免凭空增加未使用的默认配置。

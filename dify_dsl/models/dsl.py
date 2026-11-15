@@ -38,7 +38,19 @@ class DifyDSL(BaseModel):
                 if isinstance(graph, dict):
                     raw_nodes = graph.get("nodes", [])
                     if raw_nodes and isinstance(raw_nodes[0], dict):
-                        graph["nodes"] = [parse_node(n) for n in raw_nodes]
+                        # 解析输入字典不应反向修改调用者持有的 DSL 数据。
+                        # 过去在原 graph 上赋值会将 nodes 从 dict 改成 Node，
+                        # 导致同一份原始数据再次转换/比较时发生隐式变化。
+                        values = {
+                            **values,
+                            "workflow": {
+                                **workflow,
+                                "graph": {
+                                    **graph,
+                                    "nodes": [parse_node(n) for n in raw_nodes],
+                                },
+                            },
+                        }
         return values
 
     # -- Convenience accessors --
