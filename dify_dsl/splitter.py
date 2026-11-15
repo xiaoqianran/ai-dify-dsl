@@ -75,6 +75,9 @@ def split_workflow(dsl: DifyDSL, output_dir: str | Path) -> Path:
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
+    # 只保存工作流结构字段，节点具体配置仍拆分到独立文件。
+    raw = dsl.model_dump(mode="python", serialize_as_any=True, exclude_unset=True)
+
     # Metadata
     meta_dir = out / "metadata"
     meta_dir.mkdir(exist_ok=True)
@@ -86,10 +89,13 @@ def split_workflow(dsl: DifyDSL, output_dir: str | Path) -> Path:
         "version": dsl.version,
         "conversation_variables": dsl.workflow.conversation_variables,
         "environment_variables": dsl.workflow.environment_variables,
+        "root_fields": {k: v for k, v in raw.items() if k != "workflow"},
+        "workflow_fields": {k: v for k, v in raw.get("workflow", {}).items() if k not in ("graph", "features")},
+        "graph_fields": {k: v for k, v in raw.get("workflow", {}).get("graph", {}).items() if k not in ("nodes", "edges")},
     })
 
-    _save_json(meta_dir / "edges.json", [e.model_dump() for e in dsl.edges])
-    _save_json(meta_dir / "features.json", dsl.workflow.features.model_dump())
+    _save_json(meta_dir / "edges.json", raw.get("workflow", {}).get("graph", {}).get("edges", []))
+    _save_json(meta_dir / "features.json", raw.get("workflow", {}).get("features", {}))
 
     # Nodes
     nodes_dir = out / "nodes"
@@ -135,7 +141,10 @@ def _split_node(node: Node, node_dir: Path) -> None:
     data = node.data
 
     # Common metadata for all node types
+    raw_node = node.model_dump(mode="python", serialize_as_any=True, exclude_unset=True)
     node_meta = {
+        "node_fields": {k: v for k, v in raw_node.items() if k != "data"},
+        "explicit_data_fields": list(raw_node.get("data", {})),
         "node_id": node.id,
         "type": data.type,
         "title": data.title,
@@ -172,12 +181,12 @@ def _split_node(node: Node, node_dir: Path) -> None:
         _split_mcp(data, node_dir)
     else:
         # Generic: dump full data as config
-        _dump_yaml(data.model_dump(), node_dir / "config.yaml")
+        _dump_yaml(data.model_dump(mode="python", exclude_unset=True), node_dir / "config.yaml")
 
 
 def _split_llm(data: LLMNodeData, d: Path) -> None:
     """Split LLM node: separate prompts from config."""
-    config = data.model_dump()
+    config = data.model_dump(mode="python", exclude_unset=True)
     prompts = config.pop("prompt_template", [])
     _dump_yaml(config, d / "config.yaml")
 
@@ -193,7 +202,7 @@ def _split_llm(data: LLMNodeData, d: Path) -> None:
 
 def _split_code(data: CodeNodeData, d: Path) -> None:
     """Split Code node: separate code from config."""
-    config = data.model_dump()
+    config = data.model_dump(mode="python", exclude_unset=True)
     code = config.pop("code", "")
     lang = data.code_language
     ext = _CODE_EXT.get(lang, "txt")
@@ -203,7 +212,7 @@ def _split_code(data: CodeNodeData, d: Path) -> None:
 
 def _split_agent(data: AgentNodeData, d: Path) -> None:
     """Split Agent node: separate prompts and parameters."""
-    config = data.model_dump()
+    config = data.model_dump(mode="python", exclude_unset=True)
     prompts = config.pop("prompt_template", [])
     params = config.pop("agent_parameters", {})
     _dump_yaml(config, d / "config.yaml")
@@ -223,7 +232,7 @@ def _split_agent(data: AgentNodeData, d: Path) -> None:
 
 def _split_tool(data: ToolNodeData, d: Path) -> None:
     """Split Tool node: separate tool config."""
-    config = data.model_dump()
+    config = data.model_dump(mode="python", exclude_unset=True)
     tool_params = config.pop("tool_parameters", {})
     tool_configs = config.pop("tool_configurations", {})
     _dump_yaml(config, d / "config.yaml")
@@ -233,7 +242,7 @@ def _split_tool(data: ToolNodeData, d: Path) -> None:
 
 def _split_http(data: HttpRequestNodeData, d: Path) -> None:
     """Split HTTP node: separate request details."""
-    config = data.model_dump()
+    config = data.model_dump(mode="python", exclude_unset=True)
     http_parts = {}
     for key in ("headers", "params", "body", "authorization"):
         http_parts[key] = config.pop(key, None)
@@ -243,7 +252,7 @@ def _split_http(data: HttpRequestNodeData, d: Path) -> None:
 
 def _split_if_else(data: IfElseNodeData, d: Path) -> None:
     """Split IfElse node: separate conditions."""
-    config = data.model_dump()
+    config = data.model_dump(mode="python", exclude_unset=True)
     conditions = config.pop("conditions", [])
     _dump_yaml(config, d / "config.yaml")
     _save_json(d / "conditions.json", conditions)
@@ -251,12 +260,12 @@ def _split_if_else(data: IfElseNodeData, d: Path) -> None:
 
 def _split_iteration(data: IterationNodeData, d: Path) -> None:
     """Split Iteration node."""
-    _dump_yaml(data.model_dump(), d / "config.yaml")
+    _dump_yaml(data.model_dump(mode="python", exclude_unset=True), d / "config.yaml")
 
 
 def _split_template(data: TemplateTransformNodeData, d: Path) -> None:
     """Split Template node: separate template text."""
-    config = data.model_dump()
+    config = data.model_dump(mode="python", exclude_unset=True)
     template = config.pop("template", "")
     _dump_yaml(config, d / "config.yaml")
     (d / "template.txt").write_text(template, encoding="utf-8")
@@ -264,7 +273,7 @@ def _split_template(data: TemplateTransformNodeData, d: Path) -> None:
 
 def _split_mcp(data: McpServerNodeData, d: Path) -> None:
     """Split MCP server node."""
-    _dump_yaml(data.model_dump(), d / "config.yaml")
+    _dump_yaml(data.model_dump(mode="python", exclude_unset=True), d / "config.yaml")
 
 
 def _save_json(path: Path, data: Any) -> None:

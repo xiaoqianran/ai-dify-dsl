@@ -57,6 +57,24 @@ def main(argv=None) -> int:
     p_analyze.add_argument("--tools", action="store_true", help="Show tool usage analysis")
     p_analyze.add_argument("--variables", action="store_true", help="Show variable flow analysis")
 
+    # 安全的 Python 数据声明与 YAML 双向转换，不执行任意 Python 程序。
+    p_to_py = sub.add_parser("to-python", help="将 Dify YAML 转为可编辑的 Python 数据声明")
+    p_to_py.add_argument("file")
+    p_to_py.add_argument("-o", "--output", required=True)
+    p_to_py.add_argument("--force", action="store_true")
+
+    p_from_py = sub.add_parser("from-python", help="将 Python 数据声明转为 Dify YAML")
+    p_from_py.add_argument("file")
+    p_from_py.add_argument("-o", "--output", required=True)
+    p_from_py.add_argument("--force", action="store_true")
+
+    p_sync = sub.add_parser("sync", help="基于内容指纹双向同步 Python 与 YAML，冲突时拒绝覆盖")
+    p_sync.add_argument("yaml")
+    p_sync.add_argument("python")
+    p_sync.add_argument("--state", default=None)
+    p_sync.add_argument("--watch", action="store_true", help="持续监视两侧文件变化")
+    p_sync.add_argument("--interval", type=float, default=1.0)
+
     args = parser.parse_args(argv)
 
     if not args.command:
@@ -64,6 +82,18 @@ def main(argv=None) -> int:
         return 1
 
     try:
+        if args.command in ("to-python", "from-python", "sync"):
+            from dify_dsl.python_sync import dsl_to_python, python_to_yaml, sync_pair, watch_pair
+            if args.command == "to-python":
+                print(dsl_to_python(args.file, args.output, overwrite=args.force))
+            elif args.command == "from-python":
+                print(python_to_yaml(args.file, args.output, overwrite=args.force))
+            else:
+                if args.watch:
+                    watch_pair(args.yaml, args.python, state_file=args.state, interval=args.interval)
+                else:
+                    print(sync_pair(args.yaml, args.python, state_file=args.state))
+            return 0
         if args.command == "parse":
             return _cmd_parse(args)
         elif args.command == "info":

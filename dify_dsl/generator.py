@@ -69,11 +69,11 @@ except ImportError:
 def _model_to_dict(obj: Any) -> Any:
     """Recursively convert Pydantic models to plain dicts.
 
-    Preserves field ordering and extra fields from ``extra='allow'``.
+    Preserves explicitly set fields, unknown fields, and concrete node subtype fields.
     """
     if isinstance(obj, BaseModel):
         # model_dump preserves extra fields and field order
-        d = obj.model_dump(mode="python", exclude_none=False)
+        d = obj.model_dump(mode="python", serialize_as_any=True, exclude_unset=True)
         # Recursively convert any nested models that model_dump may have missed
         return _model_to_dict(d)
     elif isinstance(obj, dict):

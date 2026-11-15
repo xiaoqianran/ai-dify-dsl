@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 from dify_dsl.models.dsl import DifyDSL
 from dify_dsl.models.app import DifyApp, Dependency
 from dify_dsl.models.workflow import Workflow, Features, Graph, Edge
-from dify_dsl.models.nodes import Node, parse_node_data
+from dify_dsl.models.nodes import Node, parse_node, parse_node_data
 
 # Prefer ruamel.yaml
 try:
@@ -75,7 +75,20 @@ def rebuild_workflow(split_dir: str | Path) -> DifyDSL:
         if node:
             nodes.append(node)
 
-    # Assemble DSL
+    # 新格式保存原始键集合与未知字段，避免重建时补入默认值或丢失扩展字段。
+    if "root_fields" in workflow_info:
+        root_data = dict(workflow_info["root_fields"])
+        workflow_data = dict(workflow_info["workflow_fields"])
+        workflow_data["features"] = features_raw
+        workflow_data["graph"] = {
+            **workflow_info.get("graph_fields", {}),
+            "nodes": [node.model_dump(mode="python", serialize_as_any=True, exclude_unset=True) for node in nodes],
+            "edges": edges_raw,
+        }
+        root_data["workflow"] = workflow_data
+        return DifyDSL.model_validate(root_data)
+
+    # 兼容历史拆分目录（未记录原始字段集合）。
     dsl = DifyDSL(
         app=DifyApp.model_validate(workflow_info.get("app", {})),
         dependencies=[Dependency.model_validate(d) for d in workflow_info.get("dependencies", [])],
@@ -129,7 +142,13 @@ def _rebuild_node(node_id: str, node_type: str, node_dir: Path) -> Optional[Node
     elif node_type == "template_transform":
         config = _rebuild_template(config, node_dir)
 
-    # Build Node
+    # 只保留原本显式设置的字段，避免凭空增加未使用的默认配置。
+    if "explicit_data_fields" in meta:
+        config = {k: v for k, v in config.items() if k in meta["explicit_data_fields"]}
+    if "node_fields" in meta:
+        return parse_node({**meta["node_fields"], "data": config})
+
+    # 兼容历史拆分目录。
     typed_data = parse_node_data(config)
     return Node(
         id=node_id,

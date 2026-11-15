@@ -22,6 +22,7 @@ Usage:
 from dify_dsl.models import DifyDSL, DifyApp, Workflow, Graph, Edge, Node, NodeData
 from dify_dsl.parser import parse_dsl, parse_dsl_string
 from dify_dsl.generator import generate_dsl, generate_dsl_string
+from dify_dsl.python_sync import (dsl_to_python, python_to_dsl, python_to_yaml, sync_pair, watch_pair, SyncConflictError)
 
 __version__ = "3.0.0"
 
@@ -37,4 +38,5 @@ __all__ = [
     "parse_dsl_string",
     "generate_dsl",
     "generate_dsl_string",
+    "dsl_to_python", "python_to_dsl", "python_to_yaml", "sync_pair", "watch_pair", "SyncConflictError",
 ]

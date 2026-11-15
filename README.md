@@ -228,3 +228,25 @@ python -m pytest tests/ -v
 ## License
 
 MIT
+
+## Python ↔ Dify DSL 无损双向同步
+
+支持把 Dify Workflow YAML 转成**声明式 Python 数据文件**，反向生成 YAML，或持续监听两侧更改。转换过程保留原始 DSL 中的节点数据、Code/LLM Prompt、变量、连线、未知扩展字段和显式设置的元数据；不会执行 Python 文件中的任意代码。
+
+```bash
+# 首次将 Dify Workflow 转成可编辑的 Python 数据声明
+uv run dify-dsl to-python workflow.yml -o workflow.py
+
+# Python 修改后生成新 DSL（默认禁止覆盖已有文件）
+uv run dify-dsl from-python workflow.py -o rebuilt.yml
+
+# 为一对文件建立同步状态；之后自动识别哪侧发生修改
+uv run dify-dsl sync workflow.yml workflow.py
+
+# 可选：前台持续监听；Ctrl+C 停止
+uv run dify-dsl sync workflow.yml workflow.py --watch --interval 1
+```
+
+`workflow.py` 包含一个可直接编辑的 `WORKFLOW_DSL = {...}` 字典，与其他 Python 代码不同：这个转换器不会分析任意 Python 程序的控制流，也不支持自动把业务脚本拆成 Dify 节点。首次同步要求两边语义一致，或者其中一边不存在；检测到两边都修改且内容冲突时会停止，不会自动覆盖。`.sync.json` 记录语义内容指纹。必要时使用 `to-python --force` / `from-python --force` 明确覆盖指定文件，避免误覆盖已有工作流。
+
+注意：无损往返测试只保证**配置数据保真**，不能保证未来全部 Dify 节点在目标实例上可执行；节点所依赖的插件、凭证和 Dify 版本仍需逐项进行运行验证。
