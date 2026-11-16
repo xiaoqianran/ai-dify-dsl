@@ -20,5 +20,9 @@ dev = [
 [project.scripts]
 dify-dsl = "dify_dsl.cli:main"
 
+[tool.setuptools.packages.find]
+include = ["dify_dsl*"]
+exclude = ["tests*", "integration_tests*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
