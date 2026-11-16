@@ -96,7 +96,10 @@ def test_every_known_alias_and_forward_compatible_unknown_roundtrip(tmp_path):
 
 
 def test_in_place_edit_code_prompt_and_unknown_fields_in_split(tmp_path):
-    source=_load_yaml(EXTERNAL_CASES[1])
+    # 代码编辑与重建的基础回归测试不得依赖用户的外部工作目录。
+    external = EXTERNAL_CASES[1]
+    bundled = Path(__file__).parent / "fixtures" / "excel-analysis-workflow.yml"
+    source = _load_yaml(external if external.is_file() else bundled)
     dsl=DifyDSL.model_validate(deepcopy(source))
     folder=split_workflow(dsl,tmp_path/'editable')
     code=next(folder.glob('nodes/code/*/code.py'))
@@ -115,6 +118,8 @@ def test_official_fixture_passes_structural_validator(official):
 def test_advanced_workflow_edits_propagate_both_directions(tmp_path):
     """非空真实业务图：修改复杂的 LLM 模型配置和任意未来未知字段。"""
     p=EXTERNAL_CASES[1]
+    if not p.is_file():
+        pytest.skip("External workflow fixture is not mounted")
     source=_load_yaml(p)
     yaml_path=tmp_path/'workflow.yml'
     py_path=tmp_path/'workflow.py'
